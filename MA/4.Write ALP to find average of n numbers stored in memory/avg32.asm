@@ -1,0 +1,84 @@
+; ALP for average of 32 bit numbers
+;-------------------------------------------------------------------
+section    .data
+	nline		db	10,10
+	nline_len:	equ	$-nline
+	
+	arr32		dd	00112233H, 00112233H, 00112233H, 00112233H, 00112233H
+	n:		equ	5
+	msg		db	10,10,"The average of 32-bit array elements is :	"
+	msg_len:	equ	$-msg
+
+;---------------------------------------------------------------------
+Section   .bss
+	avg		resd	1		
+	char_sum	resb	8
+;---------------------------------------------------------------------
+%macro  print   2
+	mov   eax, 4
+	mov   ebx, 1
+	mov   ecx, %1
+	mov   edx, %2
+	int   80h
+%endmacro
+
+%macro	exit	0
+	mov  eax, 1
+	mov  ebx, 0
+	int  80h
+%endmacro
+
+;---------------------------------------------------------------------
+section    .text
+	global   _start
+_start:
+
+	mov	esi, arr32	
+	mov	edi, n
+	
+	mov	eax, 0    		; sum register
+	mov	edx, 0			; carry register
+next_num:
+	add	eax,[esi]
+	jnc	skip
+	inc	edx
+skip:	
+	add 	esi,4			; 32 bit nos i.e. 4 bytes
+	dec 	edi
+	jnz  	next_num
+
+	mov	ebx,n			; store array size in ebx
+	div	ebx			; edx:eax / ebx
+					; average is in eax, remainder is in edx
+	mov	[avg], eax		; store average
+
+	print	msg, msg_len
+
+	mov 	eax,[avg]		; load value of average in eax
+	call 	disp32_proc		; display average
+
+	print	nline, nline_len
+	exit
+;--------------------------------------------------------------------	
+disp32_proc:
+
+	mov 	esi,char_sum+7		; load last byte address of char_sum buffer in esi
+	mov 	ecx,8			; number of digits 
+
+cnt:	mov 	edx,0			; make edx=0 (as in div instruction edx:eax/ebx)
+	mov 	ebx,16			; divisor=16
+	div 	ebx
+	cmp 	dl, 9			; check for remainder in EDX
+	jbe  	add30
+	add  	dl, 07h 
+add30:
+	add 	dl,30h			; calculate ASCII code
+	mov 	[esi],dl		; store it in buffer
+	dec 	esi			; point to one byte back
+
+	dec 	ecx			; decrement count
+	jnz 	cnt			; if not zero repeat
+	
+	print char_sum,8		; display result on screen
+ret
+;----------------------------------------------------------------
